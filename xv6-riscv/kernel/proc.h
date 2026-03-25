@@ -105,4 +105,9 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int waiting_tick;
+  
+  // Energy management
+  uint64 energy_budget;        // Process energy budget (in ticks)
+  uint64 energy_consumed;      // Total energy consumed (in ticks)
+  uint64 last_scheduled_tick;  // Tick when process was last scheduled
 };

@@ -149,6 +149,7 @@ UPROGS=\
 	$U/_ps\
 	$U/_good_pipe\
 	$U/_schedtest\
+	$U/_energy_test\
 
 TXTFILES=$(wildcard $U/*.txt)
 

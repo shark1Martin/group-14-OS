@@ -2,6 +2,13 @@
 
 struct stat;
 
+// Energy information structure
+struct energy_info {
+  uint64 energy_budget;    // Current energy budget
+  uint64 energy_consumed;  // Total energy consumed
+  uint64 pid;              // Process ID
+};
+
 // system calls
 int kps(char []);
 int fork(void);
@@ -25,6 +32,7 @@ int getpid(void);
 char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
+int getenergy(struct energy_info *);
 
 // ulib.c
 int stat(const char*, struct stat*);
