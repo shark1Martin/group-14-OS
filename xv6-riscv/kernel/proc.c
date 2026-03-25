@@ -126,6 +126,11 @@ found:
   p->state = USED;
 
   p-> waiting_tick = 0;
+  
+  // Initialize energy tracking
+  p->energy_budget = DEFAULT_ENERGY_BUDGET;
+  p->energy_consumed = 0;
+  p->last_scheduled_tick = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -171,6 +176,9 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->energy_budget = 0;
+  p->energy_consumed = 0;
+  p->last_scheduled_tick = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -437,12 +445,14 @@ scheduler(void)
 
     struct proc *chosen = 0;
 
-    // Find lowest PID RUNNABLE child of schedtest
+    // Find lowest PID RUNNABLE child of schedtest with good energy
+    // (energy budget > LOW_ENERGY_THRESHOLD)
     for(p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
       if(p->state == RUNNABLE &&
          p->parent != 0 &&
-         strncmp(p->parent->name, "schedtest", 16) == 0)
+         strncmp(p->parent->name, "schedtest", 16) == 0 &&
+         p->energy_budget > LOW_ENERGY_THRESHOLD)
       {
         if(chosen == 0 || p->pid < chosen->pid){
           if(chosen != 0)
@@ -454,7 +464,27 @@ scheduler(void)
       release(&p->lock);
     }
 
-    // if no schedtest child found, pick first RUNNABLE process
+    // If no high-energy processes found, select lowest PID among all schedtest children
+    // (including those with low energy)
+    if(chosen == 0){
+      for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->state == RUNNABLE &&
+           p->parent != 0 &&
+           strncmp(p->parent->name, "schedtest", 16) == 0)
+        {
+          if(chosen == 0 || p->pid < chosen->pid){
+            if(chosen != 0)
+              release(&chosen->lock);
+            chosen = p;
+            continue;  // keep chosen->lock held
+          }
+        }
+        release(&p->lock);
+      }
+    }
+
+    // If no schedtest process found, pick first RUNNABLE process
     if(chosen == 0){
       for(p = proc; p < &proc[NPROC]; p++){
         acquire(&p->lock);
@@ -483,6 +513,7 @@ scheduler(void)
 
       // Context switch to chosen process
       chosen->state = RUNNING;
+      chosen->last_scheduled_tick = 0;  // Reset tick counter for this scheduling period
       c->proc = chosen;
       swtch(&c->context, &chosen->context);
       c->proc = 0;

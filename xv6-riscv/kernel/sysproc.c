@@ -123,3 +123,32 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// Get energy information for the current process
+uint64
+sys_getenergy(void)
+{
+  uint64 addr;
+  struct proc *p = myproc();
+  
+  argaddr(0, &addr);
+  
+  if(addr == 0)
+    return -1;
+  
+  // Create a temporary buffer to hold the energy info
+  // We use a struct that matches the user-space definition
+  uint64 energy_data[3];  // energy_budget, energy_consumed, pid
+  
+  acquire(&p->lock);
+  energy_data[0] = p->energy_budget;
+  energy_data[1] = p->energy_consumed;
+  energy_data[2] = p->pid;
+  release(&p->lock);
+  
+  // Copy the energy information to user space
+  if(copyout(p->pagetable, addr, (char *)energy_data, sizeof(energy_data)) < 0)
+    return -1;
+  
+  return 0;
+}

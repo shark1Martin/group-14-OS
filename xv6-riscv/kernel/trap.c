@@ -164,11 +164,30 @@ kerneltrap()
 void
 clockintr()
 {
+  struct proc *p;
+  
   if(cpuid() == 0){
     acquire(&tickslock);
     ticks++;
     wakeup(&ticks);
     release(&tickslock);
+  }
+
+  // Track energy consumption for the currently running process
+  p = myproc();
+  if(p != 0){
+    acquire(&p->lock);
+    p->energy_consumed += ENERGY_PER_TICK;
+    
+    // Deplete energy budget
+    if(p->energy_budget >= ENERGY_PER_TICK){
+      p->energy_budget -= ENERGY_PER_TICK;
+    } else {
+      p->energy_budget = 0;
+    }
+    
+    p->last_scheduled_tick++;
+    release(&p->lock);
   }
 
   // ask for the next timer interrupt. this also clears

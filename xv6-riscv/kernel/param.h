@@ -13,3 +13,8 @@
 #define MAXPATH      128   // maximum file path name
 #define USERSTACK    1     // user stack pages
 
+// Energy efficient scheduling parameters
+#define DEFAULT_ENERGY_BUDGET  1000  // default energy budget per process (in ticks)
+#define ENERGY_PER_TICK         1    // energy consumed per timer tick
+#define LOW_ENERGY_THRESHOLD   100   // threshold below which process is deprioritized
+
