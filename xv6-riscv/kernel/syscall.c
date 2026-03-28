@@ -104,6 +104,8 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_kps(void);
 extern uint64 sys_getenergy(void);
+extern uint64 sys_dlockacq(void);
+extern uint64 sys_dlockrel(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -131,6 +133,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_kps]     sys_kps,
 [SYS_getenergy] sys_getenergy,
+[SYS_dlockacq] sys_dlockacq,
+[SYS_dlockrel] sys_dlockrel,
 };
 
 void

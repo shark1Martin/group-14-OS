@@ -44,3 +44,5 @@ entry("pause");
 entry("uptime");
 entry("kps");
 entry("getenergy");
+entry("dlockacq");
+entry("dlockrel");

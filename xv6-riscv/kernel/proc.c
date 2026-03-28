@@ -131,6 +131,8 @@ found:
   p->energy_budget = DEFAULT_ENERGY_BUDGET;
   p->energy_consumed = 0;
   p->last_scheduled_tick = 0;
+  p->waiting_for_lock = 0;
+  p->deadlock_reports = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -179,6 +181,8 @@ freeproc(struct proc *p)
   p->energy_budget = 0;
   p->energy_consumed = 0;
   p->last_scheduled_tick = 0;
+  p->waiting_for_lock = 0;
+  p->deadlock_reports = 0;
 }
 
 // Create a user page table for a given process, with no user memory,

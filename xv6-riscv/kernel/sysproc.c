@@ -6,6 +6,21 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "sleeplock.h"
+
+static struct sleeplock demo_locks[2];
+static int demo_locks_inited = 0;
+
+static void
+ensure_demo_locks_inited(void)
+{
+  if(demo_locks_inited)
+    return;
+
+  initsleeplock(&demo_locks[0], "demo_lock_0");
+  initsleeplock(&demo_locks[1], "demo_lock_1");
+  demo_locks_inited = 1;
+}
 
 uint64
 sys_kps(void)
@@ -150,5 +165,36 @@ sys_getenergy(void)
   if(copyout(p->pagetable, addr, (char *)energy_data, sizeof(energy_data)) < 0)
     return -1;
   
+  return 0;
+}
+
+uint64
+sys_dlockacq(void)
+{
+  int lockid;
+
+  argint(0, &lockid);
+  if(lockid < 0 || lockid > 1)
+    return -1;
+
+  ensure_demo_locks_inited();
+  acquiresleep(&demo_locks[lockid]);
+  return 0;
+}
+
+uint64
+sys_dlockrel(void)
+{
+  int lockid;
+
+  argint(0, &lockid);
+  if(lockid < 0 || lockid > 1)
+    return -1;
+
+  ensure_demo_locks_inited();
+  if(!holdingsleep(&demo_locks[lockid]))
+    return -1;
+
+  releasesleep(&demo_locks[lockid]);
   return 0;
 }
