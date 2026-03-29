@@ -1,4 +1,6 @@
 // Saved registers for kernel context switches.
+struct sleeplock;
+
 struct context {
   uint64 ra;
   uint64 sp;
@@ -110,4 +112,8 @@ struct proc {
   uint64 energy_budget;        // Process energy budget (in ticks)
   uint64 energy_consumed;      // Total energy consumed (in ticks)
   uint64 last_scheduled_tick;  // Tick when process was last scheduled
+
+  // Deadlock detection metadata for sleeplocks.
+  struct sleeplock *waiting_for_lock;
+  uint64 deadlock_reports;
 };
