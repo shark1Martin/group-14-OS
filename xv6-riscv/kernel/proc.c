@@ -134,6 +134,10 @@ found:
   p->waiting_for_lock = 0;
   p->deadlock_reports = 0;
 
+  p->waiting_for_lock = 0;
+  p->deadlock_reports = 0;
+  p->in_deadlock = 0;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -183,6 +187,7 @@ freeproc(struct proc *p)
   p->last_scheduled_tick = 0;
   p->waiting_for_lock = 0;
   p->deadlock_reports = 0;
+  p->in_deadlock = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -793,4 +798,70 @@ kps(char *arguments)
     printf("Usage: ps [-o | -l]\n");
   }
   return 0;
+}
+
+// system call implmentation for check_deadlock()
+// scans all processes to see if any are currently flagged (from in_deadlock == 1)
+// if deadlock is found, if identifies the process with the highest energy_consumed among the processes and kills it
+
+// possible return values
+// PID of killed victim process
+// 0 if no deadlock found
+// -1 for error
+int
+kcheck_deadlock(void)
+{
+  struct proc *p;
+  struct proc *victim = 0;
+  uint64 max_energy = 0;
+  int deadlock_found = 0;
+
+  // Pass 1: Scan for any processes that are in a deadlock state
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state != UNUSED && p->in_deadlock){
+      deadlock_found = 1;
+      if(p->energy_consumed > max_energy){
+        max_energy = p->energy_consumed;
+        if(victim != 0)
+          release(&victim->lock);
+        victim = p;
+        continue;  // keep victim->lock held
+      }
+    }
+    release(&p->lock);
+  }
+
+  if(!deadlock_found){
+    if(victim != 0)
+      release(&victim->lock);
+    printf("check_deadlock: no deadlock detected\n");
+    return 0;
+  }
+
+  // Pass 2: If we have a victim, kill it (energy-aware recovery)
+  if(victim != 0){
+    printf("check_deadlock: deadlock detected! killing pid %d (%s) with energy_consumed=%d\n",
+           victim->pid, victim->name, (int)victim->energy_consumed);
+    victim->killed = 1;
+    if(victim->state == SLEEPING){
+      victim->state = RUNNABLE;
+    }
+    int victim_pid = victim->pid;
+    release(&victim->lock);
+
+    // Clear in_deadlock flags for remaining processes
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->in_deadlock){
+        p->in_deadlock = 0;
+      }
+      release(&p->lock);
+    }
+
+    return victim_pid;
+  }
+
+  printf("check_deadlock: deadlock detected but no victim found\n");
+  return -1;
 }

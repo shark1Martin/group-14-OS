@@ -116,4 +116,8 @@ struct proc {
   // Deadlock detection metadata for sleeplocks.
   struct sleeplock *waiting_for_lock;
   uint64 deadlock_reports;
+
+  // deadlock recovery
+  // flag to indicate in a process is in deadlock
+  int in_deadlock;
 };

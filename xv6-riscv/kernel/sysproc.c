@@ -198,3 +198,10 @@ sys_dlockrel(void)
   releasesleep(&demo_locks[lockid]);
   return 0;
 }
+
+// deadlock recovery system call
+uint64
+sys_check_deadlock(void)
+{
+  return kcheck_deadlock();
+}

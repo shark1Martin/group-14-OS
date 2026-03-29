@@ -35,6 +35,7 @@ int uptime(void);
 int getenergy(struct energy_info *);
 int dlockacq(int);
 int dlockrel(int);
+int check_deadlock(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

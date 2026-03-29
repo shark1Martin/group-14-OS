@@ -24,4 +24,5 @@
 #define SYS_getenergy 23
 #define SYS_dlockacq 24
 #define SYS_dlockrel 25
+#define SYS_check_deadlock 26
 

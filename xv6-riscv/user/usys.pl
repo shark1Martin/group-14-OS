@@ -46,3 +46,4 @@ entry("kps");
 entry("getenergy");
 entry("dlockacq");
 entry("dlockrel");
+entry("check_deadlock");

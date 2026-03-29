@@ -106,6 +106,8 @@ extern uint64 sys_kps(void);
 extern uint64 sys_getenergy(void);
 extern uint64 sys_dlockacq(void);
 extern uint64 sys_dlockrel(void);
+// deadlock check
+extern uint64 sys_check_deadlock(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -135,6 +137,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_getenergy] sys_getenergy,
 [SYS_dlockacq] sys_dlockacq,
 [SYS_dlockrel] sys_dlockrel,
+// deadlock check
+[SYS_check_deadlock] sys_check_deadlock
 };
 
 void
