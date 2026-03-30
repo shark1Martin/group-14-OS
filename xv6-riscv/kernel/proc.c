@@ -524,6 +524,11 @@ scheduler(void)
         release(&p->lock);
       }
 
+      if (timer_interval != 1000000) {
+        timer_interval = 1000000;
+        w_stimecmp(r_time() + timer_interval);
+      }
+
       // Context switch to chosen process
       chosen->state = RUNNING;
       chosen->last_scheduled_tick = 0;  // Reset tick counter for this scheduling period
@@ -531,6 +536,17 @@ scheduler(void)
       swtch(&c->context, &chosen->context);
       c->proc = 0;
       release(&chosen->lock);
+    } else {
+      // Low power waiting: no process to run.
+      // Stretch tick interval to 10x (System heartbeat)
+      if (timer_interval == 1000000) {
+        timer_interval = 10000000;
+        w_stimecmp(r_time() + timer_interval);
+      }
+      
+      // WFI (Wait For Interrupt) puts the CPU to sleep
+      // until the next interrupt (e.g., timer or device) occurs.
+      asm volatile("wfi");
     }
   }
 }
