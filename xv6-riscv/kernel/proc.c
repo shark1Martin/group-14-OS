@@ -531,6 +531,11 @@ scheduler(void)
       swtch(&c->context, &chosen->context);
       c->proc = 0;
       release(&chosen->lock);
+    } else {
+      // Low power waiting: no process to run.
+      // WFI (Wait For Interrupt) puts the CPU to sleep
+      // until the next interrupt (e.g., timer or device) occurs.
+      asm volatile("wfi");
     }
   }
 }
