@@ -8,6 +8,7 @@
 
 struct spinlock tickslock;
 uint ticks;
+uint64 timer_interval = 1000000;
 
 extern char trampoline[], uservec[];
 
