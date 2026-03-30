@@ -152,6 +152,7 @@ UPROGS=\
 	$U/_energy_test\
 	$U/_deadlock_demo\
 	$U/_deadlock_test\
+	$U/_adapt_test\
 
 TXTFILES=$(wildcard $U/*.txt)
 
