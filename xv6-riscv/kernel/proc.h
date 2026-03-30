@@ -113,11 +113,11 @@ struct proc {
   uint64 energy_consumed;      // Total energy consumed (in ticks)
   uint64 last_scheduled_tick;  // Tick when process was last scheduled
 
-  // Deadlock detection metadata for sleeplocks.
   struct sleeplock *waiting_for_lock;
   uint64 deadlock_reports;
+  int in_deadlock;  
 
-  // deadlock recovery
-  // flag to indicate in a process is in deadlock
-  int in_deadlock;
+  // Deadlock detection: resource allocation graph (RAG) tracking
+  int holding_res[NRES];       // Resources currently held by this process (1=held, 0=not)
+  int waiting_res;             // Resource ID this process is waiting for (-1 = none)
 };

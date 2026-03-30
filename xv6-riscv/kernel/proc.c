@@ -133,10 +133,11 @@ found:
   p->last_scheduled_tick = 0;
   p->waiting_for_lock = 0;
   p->deadlock_reports = 0;
-
-  p->waiting_for_lock = 0;
-  p->deadlock_reports = 0;
   p->in_deadlock = 0;
+  // Initialize deadlock detection fields
+  for(int i = 0; i < NRES; i++)
+    p->holding_res[i] = 0;
+  p->waiting_res = -1;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -188,6 +189,9 @@ freeproc(struct proc *p)
   p->waiting_for_lock = 0;
   p->deadlock_reports = 0;
   p->in_deadlock = 0;
+  for(int i = 0; i < NRES; i++)
+    p->holding_res[i] = 0;
+  p->waiting_res = -1;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -800,68 +804,155 @@ kps(char *arguments)
   return 0;
 }
 
-// system call implmentation for check_deadlock()
-// scans all processes to see if any are currently flagged (from in_deadlock == 1)
-// if deadlock is found, if identifies the process with the highest energy_consumed among the processes and kills it
 
-// possible return values
-// PID of killed victim process
-// 0 if no deadlock found
-// -1 for error
-int
-kcheck_deadlock(void)
+
+// Acquire a resource for the current process (called when a process gets a lock/resource).
+void
+res_acquire(int res_id)
+{
+  struct proc *p = myproc();
+  if(res_id < 0 || res_id >= NRES)
+    return;
+  acquire(&p->lock);
+  p->holding_res[res_id] = 1;
+  p->waiting_res = -1;  // no longer waiting
+  release(&p->lock);
+}
+
+// Release a resource held by the current process.
+void
+res_release(int res_id)
+{
+  struct proc *p = myproc();
+  if(res_id < 0 || res_id >= NRES)
+    return;
+  acquire(&p->lock);
+  p->holding_res[res_id] = 0;
+  release(&p->lock);
+}
+
+// Mark that the current process is waiting for a resource.
+void
+res_wait(int res_id)
+{
+  struct proc *p = myproc();
+  if(res_id < 0 || res_id >= NRES)
+    return;
+  acquire(&p->lock);
+  p->waiting_res = res_id;
+  release(&p->lock);
+}
+
+// Find which process holds a given resource. Returns 0 if none.
+static struct proc*
+find_holder(int res_id)
 {
   struct proc *p;
-  struct proc *victim = 0;
-  uint64 max_energy = 0;
-  int deadlock_found = 0;
-
-  // Pass 1: Scan for any processes that are in a deadlock state
   for(p = proc; p < &proc[NPROC]; p++){
-    acquire(&p->lock);
-    if(p->state != UNUSED && p->in_deadlock){
-      deadlock_found = 1;
-      if(p->energy_consumed > max_energy){
-        max_energy = p->energy_consumed;
-        if(victim != 0)
-          release(&victim->lock);
-        victim = p;
-        continue;  // keep victim->lock held
+    // No lock needed here because check_deadlock holds all relevant locks
+    if(p->state != UNUSED && p->holding_res[res_id])
+      return p;
+  }
+  return 0;
+}
+
+// check_deadlock: Build a resource allocation graph (RAG) and detect cycles.
+// When a cycle (deadlock) is found, kill the process in the cycle with the
+// highest energy_consumed — this is the energy-aware recovery strategy.
+
+// 0  = no deadlock found
+// pid of killed victim = deadlock was found and resolved
+int
+check_deadlock(void)
+{
+  struct proc *p;
+  struct proc *deadlocked[NPROC];
+  int num_deadlocked = 0;
+
+  // For each process that is waiting for a resource, follow the wait-for chain.
+  // If we revisit a process, we've found a cycle = deadlock.
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == UNUSED || p->waiting_res < 0)
+      continue;
+
+    // Follow the chain: p waits for res -> who holds res? -> does that proc wait for something?
+    struct proc *visited[NPROC];
+    int nvisited = 0;
+    struct proc *cur = p;
+
+    while(cur != 0 && cur->waiting_res >= 0){
+      // Check if we've already visited this process (cycle detected)
+      for(int i = 0; i < nvisited; i++){
+        if(visited[i] == cur){
+          // DEADLOCK DETECTED — collect all processes in the cycle
+          num_deadlocked = 0;
+          for(int j = i; j < nvisited; j++){
+            deadlocked[num_deadlocked++] = visited[j];
+          }
+          goto found_deadlock;
+        }
       }
+      if(nvisited >= NPROC)
+        break;
+      visited[nvisited++] = cur;
+
+      // cur is waiting for res_id -> find who holds it
+      int res_id = cur->waiting_res;
+      cur = find_holder(res_id);
     }
-    release(&p->lock);
   }
 
-  if(!deadlock_found){
-    if(victim != 0)
-      release(&victim->lock);
-    printf("check_deadlock: no deadlock detected\n");
+  // No deadlock found
+  return 0;
+
+found_deadlock:
+  if(num_deadlocked == 0)
     return 0;
+
+  // Among all deadlocked processes, pick the one with the HIGHEST energy_consumed.
+  // killing the most energy-hungry process first reduces overall system
+  // energy waste and breaks the deadlock in the most sustainable way.
+  struct proc *victim = deadlocked[0];
+  uint64 max_energy = deadlocked[0]->energy_consumed;
+
+  for(int i = 1; i < num_deadlocked; i++){
+    if(deadlocked[i]->energy_consumed > max_energy){
+      max_energy = deadlocked[i]->energy_consumed;
+      victim = deadlocked[i];
+    }
   }
 
-  // Pass 2: If we have a victim, kill it (energy-aware recovery)
-  if(victim != 0){
-    printf("check_deadlock: deadlock detected! killing pid %d (%s) with energy_consumed=%d\n",
-           victim->pid, victim->name, (int)victim->energy_consumed);
-    victim->killed = 1;
-    if(victim->state == SLEEPING){
-      victim->state = RUNNABLE;
-    }
-    int victim_pid = victim->pid;
-    release(&victim->lock);
-
-    // Clear in_deadlock flags for remaining processes
-    for(p = proc; p < &proc[NPROC]; p++){
-      acquire(&p->lock);
-      if(p->in_deadlock){
-        p->in_deadlock = 0;
-      }
-      release(&p->lock);
-    }
-
-    return victim_pid;
+  // Print deadlock info
+  printf("DEADLOCK DETECTED! %d processes in cycle:\n", num_deadlocked);
+  for(int i = 0; i < num_deadlocked; i++){
+    printf("  pid=%d name=%s energy_consumed=%ld waiting_res=%d\n",
+           deadlocked[i]->pid,
+           deadlocked[i]->name,
+           deadlocked[i]->energy_consumed,
+           deadlocked[i]->waiting_res);
   }
 
-  printf("check_deadlock: deadlock detected but no victim found\n");
-  return -1;
+  // Kill the energy-hungry victim to break the deadlock
+  printf("ENERGY-AWARE RECOVERY: Killing pid=%d (name=%s, energy=%ld) — highest energy consumer\n",
+         victim->pid, victim->name, victim->energy_consumed);
+
+  // Release all resources held by victim so other processes can proceed
+  acquire(&victim->lock);
+  for(int i = 0; i < NRES; i++)
+    victim->holding_res[i] = 0;
+  victim->waiting_res = -1;
+  victim->killed = 1;
+  if(victim->state == SLEEPING)
+    victim->state = RUNNABLE;
+  release(&victim->lock);
+
+  return victim->pid;
+}
+
+// called periodically from the timer interrupt handler.
+// runs the deadlock detection algorithm and recovers if needed.
+void
+deadlock_recover(void)
+{
+  check_deadlock();
 }

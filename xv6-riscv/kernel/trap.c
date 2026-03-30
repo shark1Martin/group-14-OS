@@ -81,8 +81,23 @@ usertrap(void)
     kexit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    // Update energy consumption for this process
+    p->energy_consumed += ENERGY_PER_TICK;
+    if(p->energy_budget > 0)
+      p->energy_budget -= ENERGY_PER_TICK;
+    p->last_scheduled_tick++;
+
+    // Periodic deadlock detection with energy-aware recovery
+    acquire(&tickslock);
+    uint current_ticks = ticks;
+    release(&tickslock);
+    if(current_ticks % DEADLOCK_CHECK_INTERVAL == 0){
+      deadlock_recover();
+    }
+  
     yield();
+  }
 
   prepare_return();
 

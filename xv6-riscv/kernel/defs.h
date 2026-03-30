@@ -104,8 +104,13 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
-// check_deadlock declaration
-int            kcheck_deadlock(void);
+// Deadlock detection with energy-aware recovery 
+int             check_deadlock(void);
+void            res_acquire(int);
+void            res_release(int);
+void            res_wait(int);
+int             check_deadlock(void);
+void            deadlock_recover(void);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

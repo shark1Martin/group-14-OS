@@ -18,3 +18,6 @@
 #define ENERGY_PER_TICK         1    // energy consumed per timer tick
 #define LOW_ENERGY_THRESHOLD   100   // threshold below which process is deprioritized
 
+// Deadlock detection with energy-aware recovery parameters
+#define NRES              16   // maximum number of resources tracked for deadlock detection
+#define DEADLOCK_CHECK_INTERVAL  100  // how often (in ticks) to run deadlock detection

@@ -203,5 +203,5 @@ sys_dlockrel(void)
 uint64
 sys_check_deadlock(void)
 {
-  return kcheck_deadlock();
+  return check_deadlock();
 }
