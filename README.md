@@ -84,7 +84,7 @@ Once inside the xv6 shell:
 
 ```bash
 energy_test      # Demonstrates energy tracking and scheduler behavior
-deadlock_test    # Tests deadlock detection syscall and energy differentiation
+deadlock_test    # Tests deadlock detection syscall and deadlock recovery testing
 deadlock_demo    # Triggers an actual deadlock with opposing lock order
 ```
 
