@@ -1,14 +1,12 @@
 # Sustainable xv6 — Group 14
 
-An extended version of [xv6-riscv](https://github.com/mit-pdos/xv6-riscv), MIT's teaching operating system, enhanced with four kernel-level features focused on **energy efficiency**, **deadlock resilience**, and **adaptive system behavior**.
+An extended version of xv6, enhanced with four kernel-level features focused on **energy efficiency**, **deadlock resilience**, and **adaptive system behavior**.
 
 ---
 
 ## About
 
-xv6 is a simple Unix-like operating system originally developed at MIT for educational purposes. It runs on the RISC-V architecture and provides a minimal but functional kernel with processes, virtual memory, a file system, and a shell.
-
-This project builds on top of xv6-riscv by introducing four new features that address sustainability and reliability concerns found in real-world operating systems. Each feature modifies the kernel directly and is designed to integrate cleanly with the others.
+This project builds on top of xv6-riscv by introducing four new features that address sustainability concerns found in real-world operating systems. Each feature modifies the kernel directly and is designed to integrate cleanly with the others.
 
 ---
 
@@ -132,10 +130,4 @@ Tunable parameters in `kernel/param.h`:
 
 ## Team
 
-**Group 14** — Operating Systems Course
-
----
-
-## Acknowledgments
-
-Based on [xv6-riscv](https://github.com/mit-pdos/xv6-riscv) by MIT PDOS (Frans Kaashoek, Robert Morris, and Russ Cox). See the original `xv6-riscv/README` for full credits.
+**Group 14**
