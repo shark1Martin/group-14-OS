@@ -61,8 +61,6 @@ would_create_deadlock(struct proc *current_proc, struct sleeplock *target_lock)
 static int
 energy_aware_deadlock_recovery(struct proc *current_proc, struct sleeplock *target_lock)
 {
-  struct proc *victim = 0;
-  uint64 max_energy = 0;
   int owner_pid;
   int hops = 0;
   int start_pid = current_proc->pid;
@@ -70,11 +68,10 @@ energy_aware_deadlock_recovery(struct proc *current_proc, struct sleeplock *targ
   // Step 1: Mark current_proc as part of the deadlock
   current_proc->in_deadlock = 1;
 
-  // Consider current_proc as a candidate victim
-  if(current_proc->energy_consumed > max_energy){
-    max_energy = current_proc->energy_consumed;
-    victim = current_proc;
-  }
+  // Default victim: current process. Strict ">" alone left victim==0 when
+  // every process in the cycle had energy_consumed==0 (no recovery, hang).
+  struct proc *victim = current_proc;
+  uint64 max_energy = current_proc->energy_consumed;
 
   // Step 2: Walk the cycle, marking each process & tracking energy
   owner_pid = target_lock->pid;
